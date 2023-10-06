@@ -1,18 +1,19 @@
 package com.payment.cycle.infrastructure.service;
 
-import com.payment.cycle.controller.contracts.*;
-import com.payment.cycle.dto.PaymentDto;
-import com.payment.cycle.entity.*;
+import com.payment.cycle.domain.model.PaymentMessage;
+import com.payment.cycle.domain.entity.PaymentEntity;
+import com.payment.cycle.domain.model.PaymentModel;
+import com.payment.cycle.infrastructure.exceptions.GenericException;
 import com.payment.cycle.infrastructure.repository.*;
+import com.payment.cycle.infrastructure.service.contracts.*;
 import com.payment.cycle.infrastructure.service.interfaces.IPaymentService;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.BeanUtils;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.util.List;
+
 import java.util.UUID;
 
 @Service
@@ -20,97 +21,85 @@ public class PaymentService implements IPaymentService {
     @Autowired
     PaymentRepository paymentRepository;
     @Autowired
-    ResourceRepository resourceRepository;
-    @Autowired
     CardRepository cardRepository;
-    @Autowired
-    AddressRepository addressRepository;
     @Autowired
     CustomerRepository customerRepository;
 
+    @Autowired
+    EmailService emailService;
+
+    private final ModelMapper modelMapper = new ModelMapper();
+
     @Transactional
-    public PaymentEntity save(PaymentDto payment) {
-        PaymentEntity paymentEntity = new PaymentEntity();
-        CustomerEntity customerEntity = new CustomerEntity();
-        AddressEntity addressEntity = new AddressEntity();
-        CardEntity cardEntity = new CardEntity();
-        ResourceEntity resourceEntity = new ResourceEntity();
+    public void save(PaymentModel payment) throws GenericException {
+        PaymentEntity paymentMapper = modelMapper.map(payment, PaymentEntity.class);
+        paymentMapper.setRegistrationDate(LocalDateTime.now());
+        paymentMapper.setUpdateDate(LocalDateTime.now());
+        paymentMapper.setPaymentStatus("payment-register-created");
 
-        BeanUtils.copyProperties(payment, paymentEntity);
-        paymentEntity.setRegistrationDate(LocalDateTime.now());
-        paymentEntity.setUpdateDate(LocalDateTime.now());
-        paymentEntity.setPaymentStatus("register-payment-created");
+        cardRepository.save(paymentMapper.getResource().getCreditCard());
 
-        BeanUtils.copyProperties(payment.getCustomer(), customerEntity);
-        CustomerEntity customer = customerRepository.save(customerEntity);
+        customerRepository.save(paymentMapper.getCustomer());
 
-        BeanUtils.copyProperties(payment.getResource().getCreditCard().getAddress(), addressEntity);
-        addressEntity.setCustomer(customer.getId());
-        AddressEntity address = addressRepository.save(addressEntity);
+        paymentRepository.save(paymentMapper);
 
-        cardEntity.setAddress(address.getId());
-        cardEntity.setCustomer(customer.getId());
-        BeanUtils.copyProperties(payment.getResource().getCreditCard(), cardEntity);
-        CardEntity card = cardRepository.save(cardEntity);
-
-
-        resourceEntity.setCreditCard(card.getId());
-        BeanUtils.copyProperties(payment.getResource(), resourceEntity);
-        ResourceEntity resource = resourceRepository.save(resourceEntity);
-
-        paymentEntity.setCustomer(customer.getId());
-        paymentEntity.setResource(resource.getId());
-
-        return paymentRepository.save(paymentEntity);
+        emailService.sendMail("Welcome To The Jungle");
     }
 
     public List<PaymentEntity> findAll() {
         return paymentRepository.findAll();
     }
 
-    public PaymentContractResponse findById(UUID id) {
-        var payment = paymentRepository.findById(id);
-        var customer = customerRepository.findById(payment.get().getCustomer());
-        var resource = resourceRepository.findById(payment.get().getResource());
-        var card = cardRepository.findById(resource.get().getCreditCard());
-        var address = addressRepository.findById(card.get().getAddress());
+    public void updatePayment(PaymentMessage paymentMessage) throws GenericException {
+        var payment = paymentRepository.findById(UUID.fromString(paymentMessage.getPayment_id()))
+                .orElseThrow(() -> new GenericException("Payment has not be found!"));;
+        payment.setPaymentStatus(paymentMessage.getPayment_status());
+        paymentRepository.save(payment);
+    }
+
+    public PaymentContractResponse findById(UUID id) throws GenericException {
+        var payment = paymentRepository.findById(id).orElseThrow(() -> new GenericException("Payment has not be found!"));
+        var customer = customerRepository.findById(payment.getCustomer().getId()).orElseThrow(() -> new GenericException("Customer has not be found!"));;
+        var card = cardRepository.findById(payment.getResource().getCreditCard().getId()).orElseThrow(() -> new GenericException("CreditCard has not be found!"));;
+        var address = card.getAddress();
+        var resource = payment.getResource();
 
         var b = AddressContract.builder()
-                .city(address.get().getCity())
-                .state(address.get().getState())
-                .houseNumber(address.get().getHouseNumber())
-                .street(address.get().getStreet())
-                .country(address.get().getCountry())
-                .zipCode(address.get().getZipCode())
+                .city(address.getCity())
+                .state(address.getState())
+                .houseNumber(address.getHouseNumber())
+                .street(address.getStreet())
+                .country(address.getCountry())
+                .zipCode(address.getZipCode())
                 .build();
 
         var c = CustomerContract.builder()
-                .name(customer.get().getName())
-                .email(customer.get().getEmail())
+                .name(customer.getName())
+                .email(customer.getEmail())
                 .build();
 
         var car = CreditCardContract.builder()
                 .address(b)
-                .cvv(card.get().getCvv())
-                .expMonth(card.get().getExpMonth())
-                .expYear(card.get().getExpYear())
-                .holderName(card.get().getHolderName())
-                .number(card.get().getNumber())
+                .cvv(card.getCvv())
+                .expMonth(card.getExpMonth())
+                .expYear(card.getExpYear())
+                .holderName(card.getHolderName())
+                .number(card.getNumber())
                 .build();
 
         var r = ResourceContract.builder()
-                .statementDescriptor(resource.get().getStatementDescriptor())
-                .paymentMethod(resource.get().getPaymentMethod())
-                .installments(resource.get().getInstallments())
-                .recurrence(resource.get().isRecurrence())
+                .statementDescriptor(resource.getStatementDescriptor())
+                .paymentMethod(resource.getPaymentMethod())
+                .installments(resource.getInstallments())
+                .recurrence(resource.getRecurrence())
                 .creditCard(car)
                 .build();
 
         var builder = PaymentContractResponse.builder();
         builder
-                .amount(payment.get().getAmount())
-                .description(payment.get().getDescription())
-                .paymentStatus(payment.get().getPaymentStatus())
+                .amount(payment.getAmount())
+                .description(payment.getDescription())
+                .paymentStatus(payment.getPaymentStatus())
                 .customer(c)
                 .resource(r)
                 .build();

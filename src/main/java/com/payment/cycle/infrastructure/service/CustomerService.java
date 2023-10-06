@@ -1,7 +1,6 @@
 package com.payment.cycle.infrastructure.service;
 
-import com.payment.cycle.entity.CardEntity;
-import com.payment.cycle.entity.CustomerEntity;
+import com.payment.cycle.domain.entity.CustomerEntity;
 import com.payment.cycle.infrastructure.repository.CustomerRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;

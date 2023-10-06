@@ -1,6 +1,6 @@
 package com.payment.cycle.infrastructure.repository;
 
-import com.payment.cycle.entity.CustomerEntity;
+import com.payment.cycle.domain.entity.CustomerEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
