@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface IPaymentService {
-    PaymentContractResponse findById(UUID id) throws GenericException;
+    PaymentEntity findById(UUID id) throws GenericException;
     List<PaymentEntity> findAll();
     void save(PaymentModel payment) throws GenericException;
 

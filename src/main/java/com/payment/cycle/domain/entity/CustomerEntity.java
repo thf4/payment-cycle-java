@@ -23,7 +23,7 @@ public class CustomerEntity {
     private String lastName;
     @Column(nullable = false)
     private String email;
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String cpf;
 
     @OneToMany(mappedBy = "customer")

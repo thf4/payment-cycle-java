@@ -47,8 +47,7 @@ public class PaymentController {
 
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Object> findById(@PathVariable(value = "id") UUID id) throws RuntimeException, GenericException {
-        Optional<PaymentContractResponse> payment = Optional.ofNullable(paymentService.findById(id));
-        if(payment.isEmpty()) throw new ResponseNotFoundException("Payment not found");
+        var payment = paymentService.findById(id);
         return ResponseEntity.status(HttpStatus.OK).body(payment);
     }
 

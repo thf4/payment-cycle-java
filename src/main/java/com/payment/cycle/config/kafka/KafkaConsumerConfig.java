@@ -13,10 +13,8 @@ public class KafkaConsumerConfig {
     @Autowired
     private PaymentService paymentService;
     @KafkaListener(topics = "tp_payment-cycle")
-    public void consumer(String message) throws JsonProcessingException, GenericException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        var payment = objectMapper.readValue(message, PaymentMessage.class);
+    public void consumer(PaymentMessage message) throws GenericException {
 
-        paymentService.updatePayment(payment);
+        paymentService.updatePayment(message);
     }
 }

@@ -15,11 +15,12 @@ public class CardService {
     @Autowired
     CardRepository cardRepository;
     @Transactional
-    public CardEntity save(CardEntity cardEntity) {
-        return cardRepository.save(cardEntity);
-    }
+    public void save(CardEntity cardEntity) {cardRepository.save(cardEntity);}
     public Optional<CardEntity> findById(UUID id) {
         return cardRepository.findById(id);
+    }
+    public Optional<CardEntity> findCardByNumber(String number) {
+        return cardRepository.findCardByNumber(number);
     }
 
 }

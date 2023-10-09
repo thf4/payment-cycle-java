@@ -19,7 +19,7 @@ public class PaymentEntity implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne()
     @JoinColumn(name = "customer_id", nullable = false)
     private CustomerEntity customer;
     @Column(nullable = false)
